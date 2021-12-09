@@ -1,0 +1,103 @@
+---
+title: "G2- Final_Presentation"
+author: "Mason Richins, Nathan Karren, Stirling Ewing"
+date: "12/4/2021"
+output: word_document
+---
+
+```{r setup, comment=NA ,include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(stargazer)
+library(car)
+library(effects)
+library(corrgram)
+library(wooldridge)
+library(lmtest)
+```
+
+
+Cleaning up the NA's found in hrwage and lhrwage
+```{r, comment=NA}
+df <- sleep75
+df <- df[complete.cases(df),]
+```
+
+We need to remove variables that we feel ar not relevant to the story
+
+This is the data set that we will use for the regression on slpnaps. We need to remove the other leisure variables because they contradicted with the dependent variable. 
+```{r, comment=NA}
+df1 <- select(df, -c(leis1,sleep,smsa,prot,south, inlf, case, leis2, leis3, exper))
+```
+
+
+This is for an even stricter set of variables that we will use when regressing on slpnaps
+```{r, comment=NA}
+df2 <- select(df, c(slpnaps, hrwage, age, agesq, black, educ, gdhlth, male))
+
+corrgram(df2, order=TRUE, lower.panel=panel.shade,upper.panel=panel.pie, text.panel=panel.txt,main="Correlations between variables")
+```
+
+Here is the summary of all the variables to give us an idea of the different variables
+```{r, comment=NA}
+summary(df1)
+```
+
+To test and see what the structure of data set is
+```{r, comment=NA}
+str(df1)
+```
+
+ leis1 , sleep , smsa, prot, south, worknrm, worksnd, inlf, case, leis2, leis3, exper
+
+We removed all of the leis variables because it contradicts the slpnaps dependent variable.
+
+(We removed sleep because we feel it would be more beneficial to use slpnaps and they both would show multicollinearity)
+
+We removed smsa, prot, and south because they do not apply to the story we want to tell
+
+We removed inlf and case because they resulted in errors appear in our data. 
+
+Testing the initial MRM to see if it works
+```{r, comment=NA}
+MRM_sleep <- lm(slpnaps~ . , df1)
+stargazer(MRM_sleep, type = "text")
+
+hist(resid(MRM_sleep))
+```
+
+We should narrow down our regressions to only a few variables so we can more easily record that. 
+Possible regressions
+  (maybe we should adjust to regressing on slpnaps because    logically hrwage won't be affected by slpnaps.) 
+  slpnaps ~ age + black + educ + gdhlth + hrwage + male + u
+  slpnaps ~ age + black + educ + gdhlth + hrwage + male +     earns74 + selfe + spwrk + spsepay + totwork + yngkid +      yrsmarr + u
+  slpnaps ~ age + agesq + black + educ + gdhlth + hrwage +    male + u
+  log(slpnaps) ~ age + black + educ + gdhlth + hrwage +       male)
+  
+```{r, comment=NA}
+reg_base <- lm((slpnaps/60) ~ age + black + educ + gdhlth + hrwage + male, df1)
+
+reg_extend <- lm((slpnaps/60) ~ age + black + educ + gdhlth + hrwage + male + earns74 + selfe + spwrk75 + spsepay + totwrk + yngkid + yrsmarr, df1)
+
+reg_quad <- lm((slpnaps/60) ~ age + agesq + black + educ + gdhlth + hrwage + male, df1)
+
+reg_log <- lm(log(slpnaps) ~ age + black + educ + gdhlth + hrwage + male + totwrk, df1)
+
+reg_interaction <- reg_extend <- lm((slpnaps/60) ~ age + black + educ + gdhlth + hrwage + male + earns74 + selfe + spwrk75 + spsepay + totwrk + yngkid + yrsmarr + yngkid:male, df1)
+
+stargazer(reg_base,reg_extend,reg_quad, reg_log,reg_interaction, type = "text")
+```
+
+Testing for multicollinearity
+```{r, comment=NA}
+vif(reg_extend)
+```
+
+
+Testing for Heteroskedasticty
+```{r, comment=NA}
+bptest(MRM_sleep)
+```
+We fail to reject homoskedasticity 
+
